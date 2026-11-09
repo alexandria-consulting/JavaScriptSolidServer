@@ -84,6 +84,174 @@ npm install -g javascript-solid-server
 jss start --port 8080 --nostr --git
 ```
 
+## Installing with Podman
+
+These steps install Podman and the helper tools used to run JSS in a Podman pod with the
+[personal-data-locker](https://github.com/alexandria-consulting/personal-data-locker) setup (its `Makefile`, `jss.yaml` and scripts).
+
+You need Podman, `make`, and `curl`, `jq` and `openssl` for the helper
+scripts. Then clone the personal-data-locker repo and run everything from its root folder (see
+[Running](#running-with-podman)). Only Ubuntu has been tested here; the macOS and Windows
+steps follow Podman's standard setup and are untested.
+
+### Ubuntu
+
+```bash
+sudo apt install -y podman make curl jq openssl
+```
+
+### Linux Mint
+
+Linux Mint 21 and 22 are based on Ubuntu, so it's the same:
+
+```bash
+sudo apt install -y podman make curl jq openssl
+```
+
+Mint 22 (Ubuntu 24.04 base) ships Podman 4.9, which has everything used here
+(`podman kube play --replace --publish`, `podman kube down`). Mint 21 (Ubuntu
+22.04 base) ships Podman 3.4, which is too old; upgrade to Mint 22 or install a
+newer Podman from the [Podman install page](https://podman.io/docs/installation).
+
+Rootless Podman needs your user in `/etc/subuid` and `/etc/subgid`; normal
+Mint accounts already are. Check with:
+
+```bash
+grep "^$USER:" /etc/subuid /etc/subgid
+```
+
+### macOS
+
+Podman runs containers in a small Linux VM on macOS. With
+[Homebrew](https://brew.sh/):
+
+```bash
+xcode-select --install
+```
+
+```bash
+brew install podman jq
+```
+
+```bash
+podman machine init && podman machine start
+```
+
+`xcode-select --install` provides `make` (`curl` and `openssl` are built in).
+Published ports such as `127.0.0.1:4443` are forwarded from the VM to your Mac,
+so <http://localhost:4443/> works as on Linux. Keep that repo under your home
+folder, which the VM can see. The `jss-data` and `jss-secrets` volumes live
+inside the VM, so the on-disk volume paths in the personal-data-locker README are
+Linux-only. After a reboot, run `podman machine start` before `make up`.
+[Podman Desktop](https://podman-desktop.io/) is a graphical alternative to the
+`brew` install. For HTTPS, `brew install caddy`.
+
+### Windows
+
+The simplest route is WSL 2 with Ubuntu, then the Ubuntu steps inside it. In
+PowerShell as administrator:
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+Restart if asked, open the **Ubuntu** app, and run:
+
+```bash
+sudo apt update && sudo apt install -y podman make curl jq openssl
+```
+
+Clone the personal-data-locker repo inside the Ubuntu home folder (for example `~/git/`), not under
+`/mnt/c/`, and run the `make` commands from there. WSL forwards `localhost`,
+so <http://localhost:4443/> opens from your Windows browser.
+
+Alternatively, install Podman for Windows (it also runs on WSL 2) with
+`winget install -e --id RedHat.Podman` or [Podman Desktop](https://podman-desktop.io/),
+then `podman machine init` and `podman machine start` (again after each
+reboot). From PowerShell you can then use the commands in
+[Running without make](#running-without-make), but the `Makefile` and the
+`create-pod`/`grant-webid` scripts need bash (WSL or Git Bash). For HTTPS,
+`winget install -e --id CaddyServer.Caddy`, or install Caddy inside WSL.
+
+## Running with Podman
+
+Run `make` and the `podman` commands below from the root of the install
+directory, the personal-data-locker folder containing `jss.yaml` and the
+`Makefile`. They use relative paths such as
+`jss/`, `profiles/` and `jss.yaml`, so they fail from anywhere else.
+
+### With make
+
+| Command | What it does |
+| --- | --- |
+| `make up` | Build the image and start the pod (`PROFILE=local` by default) |
+| `make up PROFILE=lan` | Same, with the `lan` profile, published on `0.0.0.0:4443` |
+| `make up PROFILE=internet` | Same, with the `internet` profile, on `127.0.0.1:4443` behind Caddy |
+| `make down` | Stop and remove the pod (volumes are kept) |
+| `make restart` | `down` then `up` |
+| `make logs` | Follow server logs |
+| `make status` | Show pod, container, and volume state |
+| `make shell` | Shell inside the server container (e.g. for `jss invite create`) |
+| `make rebuild` | Rebuild the image without cache, then restart |
+| `make reset` | Stop the pod and, after confirmation, delete all data and secrets |
+| `make caddy-validate` | Check `proxy/Caddyfile` in a throwaway Caddy container |
+| `make create-pod NAME=…` | Create a pod (account) and save its login to `~/.config/jss-dev/<name>-account.txt` |
+| `make grant-webid POD=… CONTAINER=… WEBID=…` | Give a WebID Read/Write/Control on a container |
+
+Pass the same `PROFILE=` to `restart` and `rebuild` that you used for `up`.
+
+### Running without make
+
+Without make, the equivalents are `podman kube play --replace --configmap profiles/local.yaml --publish 127.0.0.1:4443:4443 jss.yaml` to start and `podman kube down jss.yaml` to stop.
+Build the image first with `podman build -t localhost/jss:latest jss`
+(`make up` does this for you). For another profile, use
+`profiles/<name>.yaml` (or your `profiles/<name>.local.yaml`) and its bind:
+`--publish 0.0.0.0:4443:4443` for `lan`, `--publish 127.0.0.1:4443:4443` for
+`local` and `internet`.
+
+### Is it running?
+
+With make:
+
+```bash
+make status
+```
+
+The `jss` pod should show `Running` and `jss-server` should show `Up`, with
+`127.0.0.1:4443->4443/tcp` (or `0.0.0.0:4443` on the `lan` profile). `Exited`
+or no pod at all means it's stopped. `make logs` follows the server log.
+
+Without make:
+
+```bash
+podman pod ps
+```
+
+```bash
+podman ps --all --filter name=jss-server
+```
+
+Look for `Running` (pod) and `Up …` (container); `Exited` means it stopped.
+Follow the log with:
+
+```bash
+podman logs -f jss-server
+```
+
+Either way, check that it answers HTTP:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4443/
+```
+
+`200` means it's up; `000` means nothing is listening on port 4443. You can
+also open <http://localhost:4443/> in a browser.
+
+The pod doesn't start again by itself after a reboot (rootless Podman doesn't
+start pods at boot unless you set that up), so after restarting the machine,
+run `make up` again. Your data is kept in the `jss-data` and `jss-secrets`
+volumes.
+
 ## CLI Reference
 
 ```bash
