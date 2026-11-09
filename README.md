@@ -102,10 +102,11 @@ jss start --port 8080 --nostr --git
 ## Installing with Podman
 
 These steps install Podman and the helper tools used to run JSS in a Podman pod
-(with a `Makefile`, a `jss.yaml` pod spec and helper scripts).
+(with a `Makefile`, a `jss.yaml` pod spec and helper scripts, all in the
+[`podman/`](podman/) folder). Podman isolates the JSS from your host system and Podman Pods can be orchestrated with Kubernetes.
 
 You need Podman, `make`, and `curl`, `jq` and `openssl` for the helper
-scripts. Then run everything from the folder that holds your Podman setup (see
+scripts. Then run everything from the `podman/` folder of this repo (see
 [Running](#running-with-podman)). Only Ubuntu has been tested here; the macOS and Windows
 steps follow Podman's standard setup and are untested.
 
@@ -190,10 +191,22 @@ reboot). From PowerShell you can then use the commands in
 
 ## Running with Podman
 
-Run `make` and the `podman` commands below from the root of the install
-directory, the folder containing `jss.yaml` and the
-`Makefile`. They use relative paths such as
-`jss/`, `profiles/` and `jss.yaml`, so they fail from anywhere else.
+Run `make` and the `podman` commands below from the `podman/` folder of this
+repo, which contains `jss.yaml` and the `Makefile`. They use relative paths such
+as `jss/`, `profiles/` and `jss.yaml`, so they fail from anywhere else.
+
+| Path (under `podman/`) | Purpose |
+| --- | --- |
+| `jss/Containerfile` | Image: Node 22 + `javascript-solid-server` (pinned via `JSS_VERSION`) |
+| `jss.yaml` | Kubernetes v1 Pod run with `podman kube play` (volumes `jss-data`, `jss-secrets`) |
+| `profiles/local.yaml` | ConfigMap for `http://localhost:4443/` |
+| `profiles/lan.yaml` | ConfigMap for LAN access (`0.0.0.0:4443`) |
+| `profiles/internet.yaml` | ConfigMap for a public HTTPS domain behind Caddy, invite-only |
+| `profiles/*.local.yaml` | Your machine-specific copies of the profiles (gitignored, used automatically) |
+| `proxy/Caddyfile` | Host-side Caddy reverse proxy (internet site, LAN `tls internal` example) |
+| `scripts/create-pod.sh` | Create a pod with a generated password, saving the login outside the repo |
+| `scripts/grant-webid.sh` | Grant a WebID access to a container, keeping existing ACL rules |
+| `Makefile` | Build / run / inspect / reset commands |
 
 ### With make
 
