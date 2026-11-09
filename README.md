@@ -6,6 +6,21 @@ A minimal, fast, JSON-LD native Solid server for the agentic web.
 
 **[Documentation](https://javascriptsolidserver.github.io/docs/)** | **[GitHub](https://github.com/JavaScriptSolidServer/JavaScriptSolidServer)**
 
+## Contents
+
+- [Architecture](#architecture)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Installing with Podman](#installing-with-podman)
+- [Running with Podman](#running-with-podman)
+- [CLI Reference](#cli-reference)
+- [Documentation](#documentation)
+- [Comparison](#comparison)
+- [Performance](#performance)
+- [Running Tests](#running-tests)
+- [Maintainers](#maintainers)
+- [License](#license)
+
 ## Architecture
 
 <p align="center">
@@ -86,11 +101,11 @@ jss start --port 8080 --nostr --git
 
 ## Installing with Podman
 
-These steps install Podman and the helper tools used to run JSS in a Podman pod with the
-[personal-data-locker](https://github.com/alexandria-consulting/personal-data-locker) setup (its `Makefile`, `jss.yaml` and scripts).
+These steps install Podman and the helper tools used to run JSS in a Podman pod
+(with a `Makefile`, a `jss.yaml` pod spec and helper scripts).
 
 You need Podman, `make`, and `curl`, `jq` and `openssl` for the helper
-scripts. Then clone the personal-data-locker repo and run everything from its root folder (see
+scripts. Then run everything from the folder that holds your Podman setup (see
 [Running](#running-with-podman)). Only Ubuntu has been tested here; the macOS and Windows
 steps follow Podman's standard setup and are untested.
 
@@ -139,9 +154,9 @@ podman machine init && podman machine start
 
 `xcode-select --install` provides `make` (`curl` and `openssl` are built in).
 Published ports such as `127.0.0.1:4443` are forwarded from the VM to your Mac,
-so <http://localhost:4443/> works as on Linux. Keep that repo under your home
+so <http://localhost:4443/> works as on Linux. Keep your Podman setup under your home
 folder, which the VM can see. The `jss-data` and `jss-secrets` volumes live
-inside the VM, so the on-disk volume paths in the personal-data-locker README are
+inside the VM, so on-disk volume paths are
 Linux-only. After a reboot, run `podman machine start` before `make up`.
 [Podman Desktop](https://podman-desktop.io/) is a graphical alternative to the
 `brew` install. For HTTPS, `brew install caddy`.
@@ -161,7 +176,7 @@ Restart if asked, open the **Ubuntu** app, and run:
 sudo apt update && sudo apt install -y podman make curl jq openssl
 ```
 
-Clone the personal-data-locker repo inside the Ubuntu home folder (for example `~/git/`), not under
+Keep your Podman setup inside the Ubuntu home folder (for example `~/git/`), not under
 `/mnt/c/`, and run the `make` commands from there. WSL forwards `localhost`,
 so <http://localhost:4443/> opens from your Windows browser.
 
@@ -176,7 +191,7 @@ reboot). From PowerShell you can then use the commands in
 ## Running with Podman
 
 Run `make` and the `podman` commands below from the root of the install
-directory, the personal-data-locker folder containing `jss.yaml` and the
+directory, the folder containing `jss.yaml` and the
 `Makefile`. They use relative paths such as
 `jss/`, `profiles/` and `jss.yaml`, so they fail from anywhere else.
 
